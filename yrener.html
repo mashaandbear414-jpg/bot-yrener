@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yrener</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<style>
+:root{--bg:#0a0a0a;--surface:#111;--surface2:#1a1a1a;--border:rgba(255,255,255,0.08);--text:#f0f0f0;--muted:#666;--accent:#e63e3e;--accent2:#ff5555;--white:#fff;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;}
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;background:rgba(10,10,10,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
+.logo{display:flex;align-items:center;gap:10px;font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:var(--white);}
+.logo-icon{width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#fff;font-family:'Syne',sans-serif;}
+.nav-actions{display:flex;gap:10px;align-items:center;}
+.nav-btn{width:42px;height:42px;border-radius:12px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;background:var(--surface2);color:var(--text);font-size:18px;text-decoration:none;}
+.nav-btn.tg{background:#2AABEE;color:#fff;}
+.nav-btn:hover{transform:scale(1.08);}
+.hero{padding:120px 24px 60px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;top:10%;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(230,62,62,0.12) 0%,transparent 70%);pointer-events:none;border-radius:50%;animation:pulseGlow 4s ease-in-out infinite;}
+@keyframes pulseGlow{0%,100%{opacity:0.6;transform:translateX(-50%) scale(1);}50%{opacity:1;transform:translateX(-50%) scale(1.1);}}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(230,62,62,0.15);border:1px solid rgba(230,62,62,0.3);border-radius:100px;padding:6px 14px;font-size:12px;color:var(--accent2);font-weight:500;margin-bottom:28px;animation:fadeUp 0.6s ease both;}
+.hero h1{font-family:'Syne',sans-serif;font-size:clamp(42px,10vw,80px);font-weight:800;line-height:1.05;letter-spacing:-2px;color:var(--white);margin-bottom:20px;animation:fadeUp 0.7s ease both;}
+.hero h1 span{color:var(--accent);}
+.hero>p{font-size:16px;color:var(--muted);max-width:380px;line-height:1.7;margin-bottom:40px;animation:fadeUp 0.8s ease both;}
+.glass-card{background:rgba(255,255,255,0.03);backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,0.09);border-radius:24px;padding:32px 28px;width:100%;max-width:360px;box-shadow:0 8px 40px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.07);animation:fadeUp 0.9s ease both;position:relative;overflow:hidden;}
+.glass-card::before{content:'';position:absolute;top:-50%;left:-20%;width:140%;height:100%;background:linear-gradient(135deg,rgba(255,255,255,0.04) 0%,transparent 60%);pointer-events:none;}
+.btn{width:100%;padding:16px;border-radius:14px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-size:16px;font-weight:700;letter-spacing:0.3px;transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1);position:relative;}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 4px 20px rgba(230,62,62,0.3);}
+.btn-primary:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 8px 28px rgba(230,62,62,0.45);}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.btn-secondary:hover{transform:translateY(-2px);}
+.btn-ghost{background:transparent;color:var(--muted);font-size:14px;font-weight:500;}
+.btn-ghost:hover{color:var(--text);}
+.cta-buttons{display:flex;flex-direction:column;gap:12px;}
+.divider{display:flex;align-items:center;gap:12px;margin:4px 0;color:var(--muted);font-size:13px;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.tg-banner{margin:0 20px 24px;background:linear-gradient(135deg,#1a2a3a,#1e3a5f);border:1px solid rgba(42,171,238,0.2);border-radius:20px;padding:20px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:all 0.25s;text-decoration:none;position:relative;overflow:hidden;}
+.tg-banner:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(42,171,238,0.2);}
+.tg-banner-icon{width:48px;height:48px;background:#2AABEE;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
+.tg-banner-text h4{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--white);margin-bottom:3px;}
+.tg-banner-text p{font-size:12px;color:rgba(255,255,255,0.5);}
+.tg-arrow{margin-left:auto;color:rgba(255,255,255,0.3);font-size:20px;}
+#authScreen{align-items:center;justify-content:center;padding:24px;position:relative;overflow:hidden;}
+#authScreen::before{content:'';position:absolute;top:-20%;left:50%;transform:translateX(-50%);width:500px;height:500px;background:radial-gradient(circle,rgba(230,62,62,0.1) 0%,transparent 70%);pointer-events:none;}
+.auth-logo{text-align:center;margin-bottom:32px;}
+.big-icon{width:64px;height:64px;background:var(--accent);border-radius:18px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#fff;font-family:'Syne',sans-serif;box-shadow:0 0 0 8px rgba(230,62,62,0.1);}
+.auth-logo h1{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:var(--white);}
+.auth-logo p{color:var(--muted);font-size:14px;margin-top:6px;}
+.auth-card{width:100%;max-width:360px;}
+.input-group{margin-bottom:14px;}
+.input-group label{display:block;font-size:13px;color:var(--muted);margin-bottom:7px;font-weight:500;}
+.input-group input{width:100%;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:15px;font-family:'Inter',sans-serif;outline:none;transition:border-color 0.2s,box-shadow 0.2s;}
+.input-group input:focus{border-color:rgba(230,62,62,0.5);}
+.input-group input::placeholder{color:var(--muted);}
+.input-group input.invalid{border-color:rgba(230,62,62,0.6)!important;box-shadow:0 0 0 3px rgba(230,62,62,0.1);}
+.input-group input.valid{border-color:rgba(50,200,100,0.5)!important;box-shadow:0 0 0 3px rgba(50,200,100,0.08);}
+.field-error{font-size:12px;color:var(--accent2);margin-top:6px;display:none;}
+.field-error.show{display:block;animation:fadeUp 0.2s ease;}
+.field-hint{font-size:12px;color:var(--muted);margin-top:5px;}
+.pwd-strength{margin-top:8px;display:flex;gap:4px;}
+.pwd-bar{flex:1;height:3px;border-radius:10px;background:var(--border);transition:background 0.3s;}
+.menu-hero{padding:28px 24px 16px;text-align:center;}
+.menu-hero h2{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--white);margin-bottom:4px;}
+.menu-hero p{color:var(--muted);font-size:14px;}
+.menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:8px 20px 20px;}
+.menu-item{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px 18px;cursor:pointer;transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1);position:relative;overflow:hidden;animation:fadeUp 0.5s ease both;}
+.menu-item:hover,.menu-item:active{transform:scale(1.04);border-color:rgba(230,62,62,0.3);background:var(--surface2);}
+.menu-item::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),transparent);opacity:0;transition:opacity 0.2s;}
+.menu-item:hover::before{opacity:1;}
+.item-icon{font-size:28px;margin-bottom:10px;display:block;}
+.item-title{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--white);margin-bottom:4px;}
+.item-sub{font-size:12px;color:var(--muted);}
+.item-badge{position:absolute;top:12px;right:12px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;font-family:'Syne',sans-serif;}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(10,10,10,0.9);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;padding:12px 0 20px;z-index:100;}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;transition:all 0.2s;padding:4px;}
+.nav-tab-icon{font-size:22px;transition:transform 0.2s;}
+.nav-tab-label{font-size:11px;color:var(--muted);font-weight:500;transition:color 0.2s;}
+.nav-tab.active .nav-tab-label{color:var(--accent);}
+.nav-tab.active .nav-tab-icon{transform:scale(1.15);}
+.scroll-content{overflow-y:auto;flex:1;padding-bottom:80px;}
+.scroll-content::-webkit-scrollbar{display:none;}
+.profile-header{padding:32px 24px 20px;text-align:center;}
+.avatar{width:80px;height:80px;background:linear-gradient(135deg,var(--accent),#ff8c00);border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:#fff;box-shadow:0 0 0 4px rgba(230,62,62,0.2);}
+.profile-name{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--white);margin-bottom:4px;}
+.profile-tag{font-size:13px;color:var(--muted);}
+.settings-section{padding:8px 20px;}
+.settings-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:0 4px;margin-bottom:10px;}
+.settings-group{background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:20px;}
+.settings-row{display:flex;align-items:center;padding:16px 18px;gap:14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;}
+.settings-row:last-child{border-bottom:none;}
+.settings-row:hover{background:var(--surface2);}
+.srow-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.srow-text{flex:1;}
+.srow-title{font-size:15px;font-weight:500;color:var(--text);}
+.srow-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.srow-right{color:var(--muted);font-size:14px;}
+.lang-btn{padding:8px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;}
+.lang-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.logout-btn{margin:0 20px 32px;width:calc(100% - 40px);padding:16px;border-radius:16px;border:1px solid rgba(230,62,62,0.3);background:rgba(230,62,62,0.08);color:var(--accent2);font-family:'Syne',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:all 0.2s;}
+.logout-btn:hover{background:rgba(230,62,62,0.15);}
+.modal-overlay{display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;}
+.modal-overlay.center{align-items:center;padding:24px;}
+.modal-sheet{background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:28px 28px 0 0;padding:28px 24px 44px;width:100%;max-width:480px;animation:slideUp 0.35s cubic-bezier(0.34,1.2,0.64,1) both;}
+.modal-center{background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px 24px;width:100%;max-width:360px;text-align:center;animation:fadeUp 0.3s ease both;}
+.modal-handle{width:40px;height:4px;background:rgba(255,255,255,0.15);border-radius:10px;margin:0 auto 24px;}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.modal-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#fff;}
+.modal-close{background:rgba(255,255,255,0.08);border:none;color:#aaa;font-size:20px;width:34px;height:34px;border-radius:10px;cursor:pointer;}
+.btn-google{background:#fff;color:#1f1f1f;border:1px solid #e0e0e0;display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Inter',sans-serif;font-weight:600;font-size:15px;}
+.btn-google:hover{background:#f8f8f8;transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.15);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.fade-up{animation:fadeUp 0.5s ease both;}
+@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px);}40%{transform:translateX(8px);}60%{transform:translateX(-5px);}80%{transform:translateX(5px);}}
+</style>
+</head>
+<body>
+
+<!-- LANDING -->
+<div id="landingScreen" class="screen active">
+  <nav>
+    <div class="logo"><div class="logo-icon">Y</div>Yrener</div>
+    <div class="nav-actions">
+      <a href="https://t.me/Yrener_Soft" target="_blank" class="nav-btn tg">✈</a>
+      <button class="nav-btn" onclick="showAuth('login')">👤</button>
+    </div>
+  </nav>
+  <div class="hero">
+    <div class="hero-badge">⚡ Меню нового поколения</div>
+    <h1>Добро<br>пожаловать<br>в <span>Yrener</span></h1>
+    <p>Мощный и стильный инструмент. Быстро. Красиво. Без лишнего.</p>
+    <div class="glass-card">
+      <div class="cta-buttons">
+        <button class="btn btn-primary" onclick="showAuth('register')">Зарегистрироваться</button>
+        <div class="divider">или</div>
+        <button class="btn btn-google" onclick="signInWithGoogle()">
+          <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+          Войти через Google
+        </button>
+        <div class="divider">или</div>
+        <button class="btn btn-secondary" onclick="showAuth('login')">Войти в аккаунт</button>
+        <button class="btn btn-ghost" onclick="guestEnter()">Позже · Войти как гость</button>
+      </div>
+    </div>
+  </div>
+  <a href="https://t.me/Yrener_Soft" target="_blank" class="tg-banner" style="margin:0 20px 40px;">
+    <div class="tg-banner-icon">✈</div>
+    <div class="tg-banner-text"><h4>Подписаться на Telegram</h4><p>Новости, обновления, поддержка</p></div>
+    <div class="tg-arrow">›</div>
+  </a>
+</div>
+
+<!-- AUTH -->
+<div id="authScreen" class="screen">
+  <div class="auth-logo">
+    <div class="big-icon">Y</div>
+    <h1>Yrener</h1>
+    <p id="authSubtitle">Создайте аккаунт</p>
+  </div>
+  <div class="auth-card glass-card">
+    <!-- REGISTER -->
+    <div id="registerFields">
+      <div class="input-group">
+        <label>Имя пользователя</label>
+        <input type="text" id="regUsername" placeholder="yrener123" autocomplete="off" oninput="liveUser(this)">
+        <div class="field-error" id="errUsername"></div>
+        <div class="field-hint">Только буквы и цифры</div>
+      </div>
+      <div class="input-group">
+        <label>Email</label>
+        <input type="email" id="regEmail" placeholder="your@example.com" autocomplete="off" oninput="liveEmail(this,'errEmail')">
+        <div class="field-error" id="errEmail"></div>
+      </div>
+      <div class="input-group" style="margin-bottom:20px;">
+        <label>Пароль</label>
+        <div style="position:relative;">
+          <input type="password" id="regPassword" placeholder="Минимум 8 символов" style="padding-right:48px;" oninput="livePwd(this,'errRegPwd','pwdStr1')">
+          <button type="button" onclick="tglPwd('regPassword',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;">👁</button>
+        </div>
+        <div class="field-error" id="errRegPwd"></div>
+        <div class="pwd-strength" id="pwdStr1"></div>
+      </div>
+      <button class="btn btn-primary" onclick="doRegister()" style="margin-bottom:10px;">Создать аккаунт</button>
+      <button class="btn btn-google" onclick="signInWithGoogle()" style="margin-bottom:10px;">
+        <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+        Зарегистрироваться через Google
+      </button>
+      <button class="btn btn-ghost" onclick="showAuth('login')">Уже есть аккаунт? Войти</button>
+    </div>
+    <!-- LOGIN -->
+    <div id="loginFields" style="display:none;">
+      <div class="input-group">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="your@example.com" autocomplete="off" oninput="liveEmail(this,'errLoginEmail')">
+        <div class="field-error" id="errLoginEmail"></div>
+      </div>
+      <div class="input-group" style="margin-bottom:6px;">
+        <label>Пароль</label>
+        <div style="position:relative;">
+          <input type="password" id="loginPass" placeholder="Ваш пароль" style="padding-right:48px;" oninput="clrErr('errLoginPass',this)">
+          <button type="button" onclick="tglPwd('loginPass',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;">👁</button>
+        </div>
+        <div class="field-error" id="errLoginPass"></div>
+      </div>
+      <div style="text-align:right;margin-bottom:20px;">
+        <button class="btn btn-ghost" onclick="openModal('forgotModal')" style="font-size:13px;width:auto;padding:4px 0;color:var(--accent);">Забыл пароль?</button>
+      </div>
+      <button class="btn btn-primary" onclick="doLogin()" style="margin-bottom:10px;">Войти</button>
+      <button class="btn btn-google" onclick="signInWithGoogle()" style="margin-bottom:10px;">
+        <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+        Войти через Google
+      </button>
+      <button class="btn btn-ghost" onclick="showAuth('register')">Нет аккаунта? Зарегистрироваться</button>
+    </div>
+    <button class="btn btn-ghost" onclick="showScreen('landingScreen')" style="margin-top:10px;font-size:13px;">← Назад</button>
+  </div>
+</div>
+
+<!-- MENU -->
+<div id="menuScreen" class="screen" style="padding-top:80px;">
+  <nav>
+    <div class="logo"><div class="logo-icon">Y</div>Yrener</div>
+    <div class="nav-actions">
+      <a href="https://t.me/Yrener_Soft" target="_blank" class="nav-btn tg">✈</a>
+      <button class="nav-btn" onclick="showTab('profile')">👤</button>
+    </div>
+  </nav>
+  <div class="scroll-content">
+    <div class="menu-hero fade-up"><h2 id="greetingText">Привет 👋</h2><p>Выбери раздел</p></div>
+    <div class="menu-grid">
+      <div class="menu-item" onclick="showScreen('downloadScreen')"><span class="item-icon">⬇️</span><div class="item-title">Скачать</div><div class="item-sub">Получить файл</div><span class="item-badge">NEW</span></div>
+      <div class="menu-item" onclick="showScreen('toolsScreen')"><span class="item-icon">🎯</span><div class="item-title">Инструменты</div><div class="item-sub">Все функции</div></div>
+      <div class="menu-item" onclick="showScreen('protectScreen')"><span class="item-icon">🛡️</span><div class="item-title">Защита</div><div class="item-sub">Безопасность</div></div>
+      <div class="menu-item" onclick="showScreen('statsScreen')"><span class="item-icon">📊</span><div class="item-title">Статистика</div><div class="item-sub">Моя активность</div></div>
+      <div class="menu-item" style="grid-column:span 2;" onclick="showScreen('supportScreen')"><span class="item-icon">💬</span><div class="item-title">Поддержка</div><div class="item-sub">Связаться с нами</div></div>
+    </div>
+    <a href="https://t.me/Yrener_Soft" target="_blank" class="tg-banner"><div class="tg-banner-icon">✈</div><div class="tg-banner-text"><h4>Подписаться на Telegram</h4><p>@Yrener_Soft</p></div><div class="tg-arrow">›</div></a>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-tab active" id="tabM1" onclick="showTab('menu')"><span class="nav-tab-icon">🏠</span><span class="nav-tab-label">Главная</span></div>
+    <div class="nav-tab" id="tabP1" onclick="showTab('profile')"><span class="nav-tab-icon">👤</span><span class="nav-tab-label">Профиль</span></div>
+  </div>
+</div>
+
+<!-- PROFILE -->
+<div id="profileScreen" class="screen" style="padding-top:80px;">
+  <nav><div class="logo"><div class="logo-icon">Y</div>Yrener</div><div class="nav-actions"><a href="https://t.me/Yrener_Soft" target="_blank" class="nav-btn tg">✈</a></div></nav>
+  <div class="scroll-content">
+    <div class="profile-header fade-up">
+      <div class="avatar" id="avatarLetter">Y</div>
+      <div class="profile-name" id="profileName">Гость</div>
+      <div class="profile-tag" id="profileTag">@guest</div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">Язык / Language</div>
+      <div class="settings-group">
+        <div class="settings-row" style="cursor:default;flex-wrap:wrap;">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;width:100%;">
+            <button class="lang-btn active" onclick="setLang(this,'ru')">🇷🇺 Русский</button>
+            <button class="lang-btn" onclick="setLang(this,'en')">🇬🇧 English</button>
+            <button class="lang-btn" onclick="setLang(this,'uz')">🇺🇿 O'zbek</button>
+            <button class="lang-btn" onclick="setLang(this,'uk')">🇺🇦 Українська</button>
+            <button class="lang-btn" onclick="setLang(this,'zh')">🇨🇳 中文</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">Аккаунт</div>
+      <div class="settings-group">
+        <div class="settings-row" onclick="openChangePwd()">
+          <div class="srow-icon" style="background:rgba(255,160,0,0.15);">🔑</div>
+          <div class="srow-text"><div class="srow-title">Сменить пароль</div><div class="srow-sub">Старый и новый пароль</div></div>
+          <div class="srow-right">›</div>
+        </div>
+        <div class="settings-row" style="cursor:default;">
+          <div class="srow-icon" style="background:rgba(42,171,238,0.15);">📧</div>
+          <div class="srow-text"><div class="srow-title">Email</div><div class="srow-sub" id="profileEmail">—</div></div>
+        </div>
+        <div class="settings-row" style="cursor:default;">
+          <div class="srow-icon" style="background:rgba(100,200,100,0.15);">📅</div>
+          <div class="srow-text"><div class="srow-title">Дата регистрации</div><div class="srow-sub" id="profileDate">—</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">Приложение</div>
+      <div class="settings-group">
+        <a href="https://t.me/Yrener_Soft" target="_blank" class="settings-row" style="text-decoration:none;">
+          <div class="srow-icon" style="background:rgba(42,171,238,0.15);">✈</div>
+          <div class="srow-text"><div class="srow-title">Telegram</div><div class="srow-sub">@Yrener_Soft</div></div>
+          <div class="srow-right">›</div>
+        </a>
+        <div class="settings-row" style="cursor:default;">
+          <div class="srow-icon" style="background:rgba(255,200,0,0.15);">⭐</div>
+          <div class="srow-text"><div class="srow-title">О приложении</div><div class="srow-sub">v1.0.0</div></div>
+        </div>
+      </div>
+    </div>
+    <a href="https://t.me/Yrener_Soft" target="_blank" class="tg-banner" style="margin:0 20px 20px;"><div class="tg-banner-icon">✈</div><div class="tg-banner-text"><h4>Подписаться на Telegram</h4><p>@Yrener_Soft</p></div><div class="tg-arrow">›</div></a>
+    <button class="logout-btn" onclick="logout()">Выйти из аккаунта</button>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-tab" id="tabM2" onclick="showTab('menu')"><span class="nav-tab-icon">🏠</span><span class="nav-tab-label">Главная</span></div>
+    <div class="nav-tab active" id="tabP2" onclick="showTab('profile')"><span class="nav-tab-icon">👤</span><span class="nav-tab-label">Профиль</span></div>
+  </div>
+</div>
+
+<!-- SUPPORT -->
+<div id="supportScreen" class="screen" style="padding-top:80px;">
+  <nav><div class="logo"><div class="logo-icon">Y</div>Yrener</div><div class="nav-actions"><button class="nav-btn" onclick="showTab('menu')" style="width:auto;padding:0 14px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;">← Назад</button></div></nav>
+  <div class="scroll-content" style="padding:24px 20px 100px;">
+    <h2 style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--white);margin-bottom:6px;">Поддержка 💬</h2>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:24px;">Мы всегда на связи</p>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px;margin-bottom:20px;min-height:160px;display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;gap:10px;">
+        <div style="width:34px;height:34px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;font-family:'Syne',sans-serif;flex-shrink:0;">Y</div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:16px 16px 16px 4px;padding:12px 16px;max-width:85%;">
+          <p style="font-size:14px;line-height:1.6;color:var(--text);">Чат поддержки <span style="color:var(--accent);font-weight:600;">в разработке</span> 🚧<br>Напиши нам в Telegram — ответим быстро!</p>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:20px;opacity:0.4;"><div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;color:var(--muted);font-size:14px;">Чат в разработке...</div><div style="width:48px;height:48px;background:var(--surface2);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;">✈</div></div>
+    <a href="https://t.me/Yrener_Soft" target="_blank" class="tg-banner" style="margin:0;"><div class="tg-banner-icon">✈</div><div class="tg-banner-text"><h4>Написать в Telegram</h4><p>@Yrener_Soft — поддержка 24/7</p></div><div class="tg-arrow">›</div></a>
+  </div>
+</div>
+
+<!-- DOWNLOAD -->
+<div id="downloadScreen" class="screen" style="padding-top:80px;">
+  <nav><div class="logo"><div class="logo-icon">Y</div>Yrener</div><div class="nav-actions"><button class="nav-btn" onclick="showTab('menu')" style="width:auto;padding:0 14px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;">← Назад</button></div></nav>
+  <div class="scroll-content" style="padding:40px 20px 100px;display:flex;flex-direction:column;align-items:center;text-align:center;">
+    <div style="font-size:64px;margin-bottom:20px;">⬇️</div>
+    <h2 style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--white);margin-bottom:10px;">Скачать Yrener</h2>
+    <p style="color:var(--muted);font-size:15px;line-height:1.7;max-width:300px;margin-bottom:36px;">Файл доступен в нашем Telegram канале!</p>
+    <div class="glass-card">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid var(--border);">
+        <div style="width:50px;height:50px;background:rgba(42,171,238,0.15);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;">📦</div>
+        <div style="text-align:left;"><div style="font-family:'Syne',sans-serif;font-weight:700;color:var(--white);font-size:15px;">Yrener Menu</div><div style="font-size:12px;color:var(--muted);">Последняя версия · В Telegram</div></div>
+      </div>
+      <p style="font-size:14px;color:var(--muted);margin-bottom:20px;line-height:1.6;">Скачать файл в нашем Telegram канале 👇</p>
+      <a href="https://t.me/Yrener_Soft" target="_blank" style="text-decoration:none;display:block;"><button class="btn btn-primary" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;"><span>✈</span><span>Скачать файл в ТГ канале</span></button></a>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div id="statsScreen" class="screen" style="padding-top:80px;">
+  <nav><div class="logo"><div class="logo-icon">Y</div>Yrener</div><div class="nav-actions"><button class="nav-btn" onclick="showTab('menu')" style="width:auto;padding:0 14px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;">← Назад</button></div></nav>
+  <div class="scroll-content" style="padding:24px 20px 100px;">
+    <h2 style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--white);margin-bottom:6px;">Статистика 📊</h2>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:24px;">Твоя активность</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:18px;"><div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Время на сайте</div><div id="statTime" style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--white);">0с</div><div style="font-size:11px;color:var(--accent);margin-top:4px;">▲ Онлайн</div></div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:18px;"><div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Разделов открыто</div><div id="statSections" style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--white);">0</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">из 5 разделов</div></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:18px;margin-bottom:16px;"><div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">История переходов</div><div id="statHistory"><div style="color:var(--muted);font-size:13px;">Пока нет данных...</div></div></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:18px;">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Сессия</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;justify-content:space-between;"><span style="font-size:14px;color:var(--muted);">Пользователь</span><span id="statUser" style="font-size:14px;font-weight:600;color:var(--white);">—</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="font-size:14px;color:var(--muted);">Начало</span><span id="statStart" style="font-size:14px;font-weight:600;color:var(--white);">—</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="font-size:14px;color:var(--muted);">Чаще всего</span><span id="statTop" style="font-size:14px;font-weight:600;color:var(--accent);">—</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLS -->
+<div id="toolsScreen" class="screen" style="padding-top:80px;">
+  <nav><div class="logo"><div class="logo-icon">Y</div>Yrener</div><div class="nav-actions"><button class="nav-btn" onclick="showTab('menu')" style="width:auto;padding:0 14px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;">← Назад</button></div></nav>
+  <div style="padding:60px 20px;text-align:center;"><div style="font-size:48px;margin-bottom:16px;">🎯</div><h2 style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--white);margin-bottom:8px;">Инструменты</h2><p style="color:var(--muted);">Скоро появятся...</p></div>
+</div>
+
+<!-- PROTECT -->
+<div id="protectScreen" class="screen" style="padding-top:80px;">
+  <nav><div class="logo"><div class="logo-icon">Y</div>Yrener</div><div class="nav-actions"><button class="nav-btn" onclick="showTab('menu')" style="width:auto;padding:0 14px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;">← Назад</button></div></nav>
+  <div style="padding:60px 20px;text-align:center;"><div style="font-size:48px;margin-bottom:16px;">🛡️</div><h2 style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--white);margin-bottom:8px;">Защита</h2><p style="color:var(--muted);">Скоро появится...</p></div>
+</div>
+
+<!-- MODAL: CHANGE PASSWORD -->
+<div id="changePwdModal" class="modal-overlay" onclick="if(event.target===this)closeModal('changePwdModal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><span class="modal-title">🔑 Смена пароля</span><button class="modal-close" onclick="closeModal('changePwdModal')">✕</button></div>
+    <div class="input-group"><label>Старый пароль</label><div style="position:relative;"><input type="password" id="oldPwd" placeholder="Введи старый пароль" style="padding-right:48px;" oninput="clrErr('errOldPwd',this)"><button type="button" onclick="tglPwd('oldPwd',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;">👁</button></div><div class="field-error" id="errOldPwd"></div></div>
+    <div class="input-group"><label>Новый пароль</label><div style="position:relative;"><input type="password" id="newPwd" placeholder="Минимум 8 символов" style="padding-right:48px;" oninput="livePwd(this,'errNewPwd','pwdStr2')"><button type="button" onclick="tglPwd('newPwd',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;">👁</button></div><div class="field-error" id="errNewPwd"></div><div class="pwd-strength" id="pwdStr2"></div></div>
+    <div class="input-group" style="margin-bottom:24px;"><label>Подтвердить новый пароль</label><div style="position:relative;"><input type="password" id="confirmPwd" placeholder="Повтори новый пароль" style="padding-right:48px;" oninput="liveConf('confirmPwd','newPwd','errConfPwd')"><button type="button" onclick="tglPwd('confirmPwd',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;">👁</button></div><div class="field-error" id="errConfPwd"></div></div>
+    <button class="btn btn-primary" onclick="doChangePwd()">Сохранить новый пароль</button>
+  </div>
+</div>
+
+<!-- MODAL: FORGOT PASSWORD -->
+<div id="forgotModal" class="modal-overlay" onclick="if(event.target===this)closeModal('forgotModal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><span class="modal-title">🔓 Забыл пароль</span><button class="modal-close" onclick="closeModal('forgotModal')">✕</button></div>
+
+    <!-- ШАГ 1: Ввод email -->
+    <div id="fStep1">
+      <p style="color:var(--muted);font-size:13px;margin-bottom:18px;line-height:1.6;">Введи email от аккаунта — отправим код подтверждения</p>
+      <div class="input-group" style="margin-bottom:20px;">
+        <label>Email аккаунта</label>
+        <input type="email" id="forgotEmail" placeholder="your@example.com" oninput="liveEmail(this,'errForgotEmail')">
+        <div class="field-error" id="errForgotEmail"></div>
+      </div>
+      <button id="fSendBtn" class="btn btn-primary" onclick="doForgotStep1()">Отправить код</button>
+    </div>
+
+    <!-- ШАГ 2: Ввод кода -->
+    <div id="fStep2" style="display:none;">
+      <!-- Подтверждение отправки -->
+      <div style="background:rgba(42,171,238,0.08);border:1px solid rgba(42,171,238,0.2);border-radius:16px;padding:16px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="width:32px;height:32px;background:#2AABEE;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">✈</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--white);">Письмо отправлено!</div>
+            <div style="font-size:11px;color:var(--muted);">на: <span id="fEmailShow" style="color:var(--text);"></span></div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.5;">Проверь почту и введи 6-значный код. Не забудь папку <b style="color:var(--text);">Спам</b>!</div>
+        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:11px;color:var(--muted);">⏱ Действует: <span id="fTimer" style="font-weight:600;">5:00</span></div>
+          <button onclick="doResendCode()" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;">Отправить снова</button>
+        </div>
+      </div>
+
+      <div class="input-group" style="margin-bottom:20px;">
+        <label>Код из письма (6 цифр)</label>
+        <input type="text" id="forgotCode" placeholder="_ _ _ _ _ _" maxlength="6" autocomplete="off"
+          style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;letter-spacing:6px;text-align:center;"
+          oninput="this.value=this.value.replace(/\D/g,'');clrErr('errForgotCode',this)">
+        <div class="field-error" id="errForgotCode"></div>
+      </div>
+      <button class="btn btn-primary" onclick="doForgotStep2()" style="margin-bottom:10px;">Подтвердить код</button>
+      <button class="btn btn-ghost" onclick="fGoStep(1)">← Назад</button>
+    </div>
+
+    <!-- ШАГ 3: Новый пароль -->
+    <div id="fStep3" style="display:none;">
+      <div style="background:rgba(50,200,100,0.08);border:1px solid rgba(50,200,100,0.25);border-radius:16px;padding:14px;margin-bottom:18px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px;">✅</span>
+        <div><div style="font-size:14px;font-weight:600;color:#fff;">Код подтверждён!</div><div style="font-size:12px;color:var(--muted);">Теперь введи новый пароль</div></div>
+      </div>
+      <div class="input-group">
+        <label>Новый пароль</label>
+        <div style="position:relative;">
+          <input type="password" id="forgotNewPwd" placeholder="Минимум 8 символов" style="padding-right:48px;" oninput="livePwd(this,'errForgotPwd','pwdStr3')">
+          <button type="button" onclick="tglPwd('forgotNewPwd',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;">👁</button>
+        </div>
+        <div class="field-error" id="errForgotPwd"></div>
+        <div class="pwd-strength" id="pwdStr3"></div>
+      </div>
+      <div class="input-group" style="margin-bottom:24px;">
+        <label>Подтвердить пароль</label>
+        <div style="position:relative;">
+          <input type="password" id="forgotConfirm" placeholder="Повтори пароль" style="padding-right:48px;" oninput="liveConf('forgotConfirm','forgotNewPwd','errForgotConf')">
+          <button type="button" onclick="tglPwd('forgotConfirm',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;">👁</button>
+        </div>
+        <div class="field-error" id="errForgotConf"></div>
+      </div>
+      <button class="btn btn-primary" onclick="doForgotReset()">Сохранить новый пароль</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: GUEST -->
+<div id="guestModal" class="modal-overlay center" onclick="if(event.target===this)closeModal('guestModal')">
+  <div class="modal-center">
+    <div style="font-size:52px;margin-bottom:16px;">🚫</div>
+    <h3 style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#fff;margin-bottom:10px;">Вы не зарегистрированы</h3>
+    <p style="color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:24px;">Эта функция доступна только зарегистрированным пользователям.</p>
+    <button class="btn btn-primary" onclick="closeModal('guestModal');logout();showAuth('register');" style="margin-bottom:10px;">Зарегистрироваться</button>
+    <button class="btn btn-ghost" onclick="closeModal('guestModal')">Закрыть</button>
+  </div>
+</div>
+
+<script>
+// ═══ STATE ═══
+let CU = null; // currentUser
+const T0 = new Date();
+const VH = []; // visit history
+const VC = {}; // visit counts
+const SN = {menuScreen:'Главная',downloadScreen:'Скачать',toolsScreen:'Инструменты',protectScreen:'Защита',statsScreen:'Статистика',supportScreen:'Поддержка',profileScreen:'Профиль'};
+
+// ═══ STORAGE ═══
+const GA = () => { try{ return JSON.parse(localStorage.getItem('yr_acc')||'{}'); }catch{ return {}; } };
+const SA = (a) => localStorage.setItem('yr_acc', JSON.stringify(a));
+const GS = () => { try{ return JSON.parse(localStorage.getItem('yr_ses')||'null'); }catch{ return null; } };
+const SS = (u) => localStorage.setItem('yr_ses', JSON.stringify(u));
+const CS = () => localStorage.removeItem('yr_ses');
+const HP = (s) => { let h=0; for(let i=0;i<s.length;i++) h=(Math.imul(31,h)+s.charCodeAt(i))|0; return h.toString(36); };
+
+// ═══ SCREENS ═══
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+  const n = SN[id];
+  if(n){ VH.unshift({name:n,time:new Date()}); if(VH.length>20)VH.pop(); VC[n]=(VC[n]||0)+1; }
+  if(id==='statsScreen') refreshStats();
+}
+
+function showAuth(mode) {
+  showScreen('authScreen');
+  const r = mode==='register';
+  document.getElementById('registerFields').style.display = r?'block':'none';
+  document.getElementById('loginFields').style.display   = r?'none':'block';
+  document.getElementById('authSubtitle').textContent = r?'Создайте аккаунт':'Войдите в аккаунт';
+}
+
+function showTab(tab) {
+  const isMenu = tab==='menu';
+  showScreen(isMenu?'menuScreen':'profileScreen');
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  if(isMenu){ document.getElementById('tabM1').classList.add('active'); document.getElementById('tabM2').classList.add('active'); }
+  else { document.getElementById('tabP1').classList.add('active'); document.getElementById('tabP2').classList.add('active'); }
+}
+
+// ═══ MODALS ═══
+function openModal(id){ document.getElementById(id).style.display='flex'; }
+function closeModal(id){
+  document.getElementById(id).style.display='none';
+  if(id==='forgotModal'){ clearInterval(_fTimerInterval); _fCode=null; fGoStep(1); }
+}
+
+// ═══ TOAST ═══
+function showToast(msg) {
+  let t = document.getElementById('_toast');
+  if(!t){ t=document.createElement('div'); t.id='_toast'; t.style.cssText='position:fixed;bottom:110px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);color:#f0f0f0;padding:12px 20px;border-radius:14px;font-size:14px;z-index:9999;opacity:0;transition:all 0.3s;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,0.5);pointer-events:none;'; document.body.appendChild(t); }
+  t.textContent=msg; t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
+  clearTimeout(t._t); t._t=setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)'; },3000);
+}
+
+// ═══ VALIDATION ═══
+const BW = ['fuck','shit','bitch','dick','cunt','nigger','хуй','пизда','блядь','блять','ебать','сука','пиздец','манда','залупа','пидор','мудак','нахуй','похуй','нихуя','курва','шлюха'];
+const hasBW = s => BW.some(w=>s.toLowerCase().includes(w));
+
+function setErr(id,msg){ const e=document.getElementById(id); if(!e)return; e.textContent=msg; msg?e.classList.add('show'):e.classList.remove('show'); }
+function setSt(inp,st){ if(!inp)return; inp.classList.remove('valid','invalid'); if(st)inp.classList.add(st); }
+function clrErr(id,inp){ setErr(id,''); setSt(inp,''); }
+
+function liveUser(inp) {
+  const v=inp.value.trim();
+  if(!v){ setSt(inp,''); setErr('errUsername',''); return; }
+  if(!/^[a-zA-Zа-яёА-ЯЁ0-9]+$/.test(v)){ setSt(inp,'invalid'); setErr('errUsername','⚠️ Только буквы и цифры, без символов'); return; }
+  if(v.length<3){ setSt(inp,'invalid'); setErr('errUsername','⚠️ Минимум 3 символа'); return; }
+  if(hasBW(v)){ setSt(inp,'invalid'); setErr('errUsername','🚫 Недопустимое слово'); return; }
+  setSt(inp,'valid'); setErr('errUsername','');
+}
+
+function liveEmail(inp,errId) {
+  const v=inp.value.trim();
+  if(!v){ setSt(inp,''); setErr(errId,''); return; }
+  const ok=/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(v);
+  if(!ok){ setSt(inp,'invalid'); setErr(errId,'⚠️ Неверный email — пример: your@example.com'); return; }
+  setSt(inp,'valid'); setErr(errId,'');
+}
+
+function livePwd(inp,errId,strId) {
+  const v=inp.value;
+  const ps=document.getElementById(strId);
+  if(ps&&!ps.children.length) ps.innerHTML='<div class="pwd-bar"></div>'.repeat(4);
+  const bars=ps?ps.querySelectorAll('.pwd-bar'):[];
+  if(!v){ setSt(inp,''); setErr(errId,''); bars.forEach(b=>b.style.background='var(--border)'); return; }
+  let s=0; if(v.length>=8)s++; if(v.length>=12)s++; if(/[A-ZА-ЯЁ]/.test(v))s++; if(/[0-9]/.test(v))s++; if(/[^a-zA-Zа-яёА-ЯЁ0-9]/.test(v))s++;
+  const c=['#e63e3e','#ff8c00','#f0d000','#32c864'][Math.min(Math.max(Math.floor(s/1.4),0),3)];
+  const f=Math.min(Math.ceil(s/1.25),4);
+  bars.forEach((b,i)=>b.style.background=i<f?c:'var(--border)');
+  if(v.length<8){ setSt(inp,'invalid'); setErr(errId,'⚠️ Минимум 8 символов'); return; }
+  setSt(inp,'valid'); setErr(errId,'');
+}
+
+function liveConf(confId,srcId,errId) {
+  const cp=document.getElementById(confId), np=document.getElementById(srcId).value;
+  if(!cp.value){ setSt(cp,''); setErr(errId,''); return; }
+  if(cp.value!==np){ setSt(cp,'invalid'); setErr(errId,'⚠️ Пароли не совпадают'); }
+  else{ setSt(cp,'valid'); setErr(errId,''); }
+}
+
+function tglPwd(id,btn) {
+  const inp=document.getElementById(id);
+  if(inp.type==='password'){ inp.type='text'; btn.textContent='🙈'; }
+  else{ inp.type='password'; btn.textContent='👁'; }
+}
+
+// ═══ REGISTER ═══
+function doRegister() {
+  const uI=document.getElementById('regUsername'), eI=document.getElementById('regEmail'), pI=document.getElementById('regPassword');
+  // trigger live validators
+  liveUser(uI); liveEmail(eI,'errEmail');
+  if(!uI.value.trim()){ setSt(uI,'invalid'); setErr('errUsername','🔴 Введи имя пользователя'); }
+  if(!eI.value.trim()){ setSt(eI,'invalid'); setErr('errEmail','🔴 Введи email, например: your@example.com'); }
+  if(!pI.value){ setSt(pI,'invalid'); setErr('errRegPwd','🔴 Введи пароль — минимум 8 символов'); }
+  else livePwd(pI,'errRegPwd','pwdStr1');
+  if(uI.classList.contains('invalid')||eI.classList.contains('invalid')||pI.classList.contains('invalid')) return;
+  if(!uI.value.trim()||!eI.value.trim()||!pI.value) return;
+
+  const acc=GA(), email=eI.value.trim().toLowerCase();
+  if(acc[email]){ setSt(eI,'invalid'); setErr('errEmail','🔴 Email уже зарегистрирован — войди в аккаунт'); return; }
+
+  const user={name:uI.value.trim(), email, tag:'@'+uI.value.trim().toLowerCase(), pwdHash:HP(pI.value), createdAt:new Date().toLocaleDateString('ru-RU')};
+  acc[email]=user; SA(acc); SS(user); CU=user;
+  showToast('✅ Аккаунт создан! Добро пожаловать, '+user.name);
+  enterApp();
+}
+
+// ═══ LOGIN ═══
+function doLogin() {
+  const eI=document.getElementById('loginEmail'), pI=document.getElementById('loginPass');
+  liveEmail(eI,'errLoginEmail');
+  if(!eI.value.trim()){ setSt(eI,'invalid'); setErr('errLoginEmail','🔴 Введи email'); }
+  if(!pI.value){ setSt(pI,'invalid'); setErr('errLoginPass','🔴 Введи пароль'); }
+  else{ setSt(pI,'valid'); setErr('errLoginPass',''); }
+  if(eI.classList.contains('invalid')||!pI.value) return;
+
+  const acc=GA(), email=eI.value.trim().toLowerCase(), a=acc[email];
+  if(!a){ setSt(eI,'invalid'); setErr('errLoginEmail','🔴 Аккаунт не найден — сначала зарегистрируйся'); return; }
+  if(a.pwdHash!==HP(pI.value)){ setSt(pI,'invalid'); setErr('errLoginPass','🔴 Неверный пароль — попробуй ещё раз'); return; }
+
+  SS(a); CU=a;
+  showToast('👋 Привет снова, '+a.name+'!');
+  enterApp();
+}
+
+// ═══ GUEST ═══
+function guestEnter(){ CU={name:'Гость',tag:'@guest',email:'—',createdAt:'—',isGuest:true}; enterApp(); }
+
+// ═══ ENTER APP ═══
+function enterApp() {
+  document.getElementById('greetingText').textContent = 'Привет, '+CU.name+' 👋';
+  document.getElementById('profileName').textContent = CU.name;
+  document.getElementById('profileTag').textContent = CU.tag;
+  document.getElementById('avatarLetter').textContent = CU.name[0].toUpperCase();
+  document.getElementById('profileEmail').textContent = CU.email||'—';
+  document.getElementById('profileDate').textContent = CU.createdAt||'—';
+  showScreen('menuScreen');
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tabM1').classList.add('active');
+  document.getElementById('tabM2').classList.add('active');
+}
+
+// ═══ LOGOUT ═══
+function logout(){ CU=null; CS(); showToast('👋 Ты вышел из аккаунта'); setTimeout(()=>showScreen('landingScreen'),400); }
+
+// ═══ CHANGE PASSWORD ═══
+function openChangePwd() {
+  if(!CU||CU.isGuest){ openModal('guestModal'); return; }
+  if(CU.googleAuth){ showToast('ℹ️ У Google аккаунта нет пароля'); return; }
+  ['oldPwd','newPwd','confirmPwd'].forEach(id=>{ const e=document.getElementById(id); if(e){e.value='';setSt(e,'');e.type='password';} });
+  ['errOldPwd','errNewPwd','errConfPwd'].forEach(id=>setErr(id,''));
+  const ps2=document.getElementById('pwdStr2'); if(ps2)ps2.innerHTML='';
+  openModal('changePwdModal');
+}
+
+function doChangePwd() {
+  const oI=document.getElementById('oldPwd'), nI=document.getElementById('newPwd'), cI=document.getElementById('confirmPwd');
+  let ok=true;
+  if(!oI.value){ setSt(oI,'invalid'); setErr('errOldPwd','🔴 Введи старый пароль'); ok=false; }
+  if(!nI.value){ setSt(nI,'invalid'); setErr('errNewPwd','🔴 Введи новый пароль'); ok=false; }
+  else{ livePwd(nI,'errNewPwd','pwdStr2'); if(nI.classList.contains('invalid'))ok=false; }
+  if(!cI.value){ setSt(cI,'invalid'); setErr('errConfPwd','🔴 Подтверди новый пароль'); ok=false; }
+  else if(cI.value!==nI.value){ setSt(cI,'invalid'); setErr('errConfPwd','⚠️ Пароли не совпадают'); ok=false; }
+  if(!ok)return;
+
+  const acc=GA(), a=acc[CU.email];
+  if(!a||a.pwdHash!==HP(oI.value)){ setSt(oI,'invalid'); setErr('errOldPwd','🔴 Неверный старый пароль'); return; }
+  if(oI.value===nI.value){ setSt(nI,'invalid'); setErr('errNewPwd','⚠️ Новый пароль совпадает со старым'); return; }
+  a.pwdHash=HP(nI.value); acc[CU.email]=a; SA(acc); SS(a); CU=a;
+  closeModal('changePwdModal');
+  showToast('✅ Пароль успешно изменён!');
+}
+
+// ═══ FIREBASE + GOOGLE AUTH ═══
+const firebaseConfig = {
+  apiKey: "AIzaSyBvySxAGJKwa3fxQs74mNoPoCijQwRc5co",
+  authDomain: "yrenercc-9f057.firebaseapp.com",
+  projectId: "yrenercc-9f057",
+  storageBucket: "yrenercc-9f057.firebasestorage.app",
+  messagingSenderId: "125306856373",
+  appId: "1:125306856373:web:317365a526e5be833c6ffc"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+function signInWithGoogle() {
+  auth.signInWithPopup(googleProvider).then(result => {
+    const u = result.user;
+    const email = u.email.toLowerCase();
+    const accounts = GA();
+
+    // Если аккаунт уже есть — просто входим
+    if (!accounts[email]) {
+      // Создаём новый аккаунт через Google
+      const name = u.displayName ? u.displayName.split(' ')[0] : email.split('@')[0];
+      accounts[email] = {
+        name: name,
+        email: email,
+        tag: '@' + name.toLowerCase().replace(/[^a-zа-яё0-9]/gi,''),
+        pwdHash: null, // нет пароля — только Google
+        createdAt: new Date().toLocaleDateString('ru-RU'),
+        googleAuth: true,
+        avatar: u.photoURL || null
+      };
+      SA(accounts);
+    }
+
+    CU = accounts[email];
+    SS(CU);
+    showToast('✅ Вошёл через Google: ' + CU.name);
+    enterApp();
+
+  }).catch(err => {
+    console.error('Google auth error:', err);
+    if (err.code === 'auth/popup-closed-by-user') return;
+    if (err.code === 'auth/unauthorized-domain') {
+      showToast('❌ Домен не авторизован в Firebase — добавь в Authorized domains');
+    } else {
+      showToast('❌ Ошибка Google входа: ' + err.message);
+    }
+  });
+}
+
+// ═══ EMAILJS ═══
+const EJS_SERVICE  = 'YrenerCC';
+const EJS_TEMPLATE = 'template_rty20ys';
+const EJS_KEY      = 'hVttfvNjwdQPi7OH7';
+emailjs.init(EJS_KEY);
+
+// ═══ FORGOT PASSWORD (3 шага) ═══
+let _fCode = null;
+let _fEmail = null;
+let _fTimerInterval = null;
+
+function fGoStep(n) {
+  [1,2,3].forEach(i => document.getElementById('fStep'+i).style.display = i===n?'block':'none');
+}
+
+function doForgotStep1() {
+  const eI = document.getElementById('forgotEmail');
+  liveEmail(eI,'errForgotEmail');
+  if(!eI.value.trim()){ setSt(eI,'invalid'); setErr('errForgotEmail','🔴 Введи email'); return; }
+  if(eI.classList.contains('invalid')) return;
+
+  const acc = GA(), email = eI.value.trim().toLowerCase();
+  if(!acc[email]){ setSt(eI,'invalid'); setErr('errForgotEmail','🔴 Аккаунт с таким email не найден'); return; }
+
+  // Генерируем 6-значный код
+  _fCode = String(Math.floor(100000 + Math.random() * 900000));
+  _fEmail = email;
+
+  // Показываем кнопку в состоянии загрузки
+  const btn = document.getElementById('fSendBtn');
+  btn.textContent = '⏳ Отправляем...';
+  btn.disabled = true;
+
+  // Отправляем через EmailJS
+  emailjs.send(EJS_SERVICE, EJS_TEMPLATE, {
+    to_email: email,
+    code: _fCode
+  }).then(() => {
+    btn.textContent = 'Отправить код';
+    btn.disabled = false;
+
+    // Показываем уведомление куда отправили
+    document.getElementById('fEmailShow').textContent = email;
+
+    // Запускаем таймер 5 минут
+    clearInterval(_fTimerInterval);
+    let secs = 300;
+    const timerEl = document.getElementById('fTimer');
+    timerEl.textContent = '5:00';
+    timerEl.style.color = 'var(--muted)';
+    _fTimerInterval = setInterval(() => {
+      secs--;
+      const m = Math.floor(secs/60), s = secs%60;
+      timerEl.textContent = m+':'+(s<10?'0':'')+s;
+      if(secs <= 60) timerEl.style.color = '#ff8c00';
+      if(secs <= 0) {
+        clearInterval(_fTimerInterval);
+        timerEl.textContent = 'Истёк';
+        timerEl.style.color = 'var(--accent)';
+        _fCode = null;
+      }
+    }, 1000);
+
+    // Сбрасываем поле кода
+    const cI = document.getElementById('forgotCode');
+    cI.value = ''; setSt(cI,''); setErr('errForgotCode','');
+
+    fGoStep(2);
+
+  }).catch((err) => {
+    btn.textContent = 'Отправить код';
+    btn.disabled = false;
+    console.error('EmailJS error:', err);
+    setErr('errForgotEmail','❌ Не удалось отправить письмо — попробуй снова');
+  });
+}
+
+function doResendCode() {
+  if(!_fEmail) return;
+  _fCode = String(Math.floor(100000 + Math.random() * 900000));
+  showToast('⏳ Отправляем новый код...');
+  emailjs.send(EJS_SERVICE, EJS_TEMPLATE, {
+    to_email: _fEmail,
+    code: _fCode
+  }).then(() => {
+    showToast('✅ Новый код отправлен!');
+    clearInterval(_fTimerInterval);
+    let secs = 300;
+    const timerEl = document.getElementById('fTimer');
+    timerEl.textContent = '5:00'; timerEl.style.color = 'var(--muted)';
+    _fTimerInterval = setInterval(() => {
+      secs--;
+      const m=Math.floor(secs/60), s=secs%60;
+      timerEl.textContent = m+':'+(s<10?'0':'')+s;
+      if(secs<=60) timerEl.style.color='#ff8c00';
+      if(secs<=0){ clearInterval(_fTimerInterval); timerEl.textContent='Истёк'; timerEl.style.color='var(--accent)'; _fCode=null; }
+    },1000);
+    const cI=document.getElementById('forgotCode'); cI.value=''; setSt(cI,''); setErr('errForgotCode','');
+  }).catch(()=>{ showToast('❌ Не удалось отправить — попробуй снова'); });
+}
+
+function doForgotStep2() {
+  const cI = document.getElementById('forgotCode');
+  const entered = cI.value.trim();
+
+  if(!entered){ setSt(cI,'invalid'); setErr('errForgotCode','🔴 Введи код из письма'); return; }
+  if(entered.length !== 6){ setSt(cI,'invalid'); setErr('errForgotCode','⚠️ Код должен быть 6 цифр'); return; }
+
+  if(!_fCode) {
+    setSt(cI,'invalid');
+    setErr('errForgotCode','⏱ Код истёк — нажми "Отправить снова"');
+    return;
+  }
+
+  if(entered !== _fCode) {
+    setSt(cI,'invalid');
+    setErr('errForgotCode','🔴 Неверный код — проверь и попробуй снова');
+    cI.style.animation='shake 0.4s ease';
+    setTimeout(()=>cI.style.animation='',400);
+    return;
+  }
+
+  // Код верный!
+  clearInterval(_fTimerInterval);
+  setSt(cI,'valid'); setErr('errForgotCode','');
+  ['forgotNewPwd','forgotConfirm'].forEach(id=>{ const e=document.getElementById(id); if(e){e.value='';setSt(e,'');} });
+  const ps3=document.getElementById('pwdStr3'); if(ps3) ps3.innerHTML='';
+  setErr('errForgotPwd',''); setErr('errForgotConf','');
+  fGoStep(3);
+}
+
+function doForgotReset() {
+  const nI=document.getElementById('forgotNewPwd'), cI=document.getElementById('forgotConfirm');
+  let ok=true;
+  if(!nI.value){ setSt(nI,'invalid'); setErr('errForgotPwd','🔴 Введи новый пароль'); ok=false; }
+  else{ livePwd(nI,'errForgotPwd','pwdStr3'); if(nI.classList.contains('invalid'))ok=false; }
+  if(!cI.value){ setSt(cI,'invalid'); setErr('errForgotConf','🔴 Подтверди пароль'); ok=false; }
+  else if(cI.value!==nI.value){ setSt(cI,'invalid'); setErr('errForgotConf','⚠️ Пароли не совпадают'); ok=false; }
+  if(!ok) return;
+
+  const acc=GA();
+  acc[_fEmail].pwdHash = HP(nI.value);
+  SA(acc);
+  _fCode=null; _fEmail=null;
+  closeModal('forgotModal');
+  fGoStep(1);
+  showToast('✅ Пароль сброшен! Войди с новым паролем');
+}
+
+// ═══ STATS ═══
+setInterval(()=>{ const e=document.getElementById('statTime'); if(!e)return; const s=Math.floor((new Date()-T0)/1000); e.textContent=s<60?s+'с':s<3600?Math.floor(s/60)+'м '+(s%60)+'с':Math.floor(s/3600)+'ч '+Math.floor((s%3600)/60)+'м'; },1000);
+
+function refreshStats() {
+  document.getElementById('statSections').textContent=Object.keys(VC).length;
+  document.getElementById('statUser').textContent=CU?CU.name:'—';
+  document.getElementById('statStart').textContent=T0.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  let top='—',max=0; for(const[k,v] of Object.entries(VC)) if(v>max){max=v;top=k;}
+  document.getElementById('statTop').textContent=top;
+  const h=document.getElementById('statHistory');
+  if(!VH.length){ h.innerHTML='<div style="color:var(--muted);font-size:13px;">Пока нет данных...</div>'; return; }
+  h.innerHTML=VH.slice(0,8).map(x=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="font-size:14px;color:var(--text);">${x.name}</span><span style="font-size:12px;color:var(--muted);">${x.time.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`).join('');
+}
+
+// ═══ LANG ═══
+function setLang(btn,code) {
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+  const L={ru:{g:'Привет',h:'Главная',p:'Профиль',l:'Выйти из аккаунта'},en:{g:'Hello',h:'Home',p:'Profile',l:'Log out'},uz:{g:'Salom',h:'Bosh sahifa',p:'Profil',l:'Chiqish'},uk:{g:'Привіт',h:'Головна',p:'Профіль',l:'Вийти'},zh:{g:'你好',h:'主页',p:'个人资料',l:'退出账号'}};
+  const d=L[code]||L.ru;
+  if(CU) document.getElementById('greetingText').textContent=d.g+', '+CU.name+' 👋';
+  const tl=document.querySelectorAll('.nav-tab-label');
+  [tl[0],tl[2]].forEach(t=>{if(t)t.textContent=d.h;});
+  [tl[1],tl[3]].forEach(t=>{if(t)t.textContent=d.p;});
+  const lb=document.querySelector('.logout-btn'); if(lb)lb.textContent=d.l;
+}
+
+// ═══ AUTO LOGIN ═══
+window.addEventListener('DOMContentLoaded',()=>{ const s=GS(); if(s){CU=s;enterApp();} });
+</script>
+</body>
+</html>
