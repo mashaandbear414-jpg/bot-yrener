@@ -1,0 +1,5 @@
+pyTelegramBotAPI
+flask
+psycopg2-binary
+cryptography
+python-dotenv
