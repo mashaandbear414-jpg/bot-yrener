@@ -545,30 +545,4 @@ def handle_all(message):
             bot.send_message(message.chat.id, "❌ Неверный формат! Используй *ДД.ММ.ГГГГ*", parse_mode="Markdown")
         return
 
-    if user_id in waiting_support:
-        waiting_support.pop(user_id)
-        link, username = get_user_link(message.from_user)
-        kb = telebot.types.InlineKeyboardMarkup()
-        kb.add(telebot.types.InlineKeyboardButton("💬 Ответить", callback_data=f"reply_{user_id}"))
-        bot.send_message(OWNER_ID,
-            f"📩 *Сообщение в поддержку*\n\n👤 Имя: {link}\n🆔 ID: `{user_id}`\n"
-            f"📲 Username: {username}\n🔗 tg://user?id={user_id}\n"
-            f"🕐 {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}\n\n💬 *Сообщение:*\n{text}",
-            parse_mode="Markdown", reply_markup=kb)
-        bot.send_message(message.chat.id, "✅ Сообщение отправлено! Ожидайте.", reply_markup=main_kb(user_id))
-
-
-# ============================================================
-#   ЗАПУСК
-# ============================================================
-def run_flask() -> None:
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port, debug=False)
-
-
-if __name__ == "__main__":
-    init_db()
-    log.info("✅ Yrener Menu Bot (PostgreSQL) запущен!")
-    t = threading.Thread(target=run_flask, daemon=True)
-    t.start()
-    bot.infinity_polling(timeout=30, long_polling_timeout=20)
+    if user_id
