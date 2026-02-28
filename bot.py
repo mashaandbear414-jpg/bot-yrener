@@ -96,6 +96,15 @@ def init_db() -> None:
                 ts        DOUBLE PRECISION NOT NULL
             )
         """)
+        # Таблица всех пользователей которые запускали бота (для рассылки)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS all_users (
+                user_id   BIGINT PRIMARY KEY,
+                username  TEXT,
+                first_name TEXT,
+                joined_at DOUBLE PRECISION NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW())
+            )
+        """)
         # Индекс для быстрого поиска просроченных ключей
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_keys_expire ON keys(expire)
@@ -167,6 +176,26 @@ def last_free_set(user_id: int, ts: float) -> None:
             "INSERT INTO user_last_free(user_id, ts) VALUES(%s,%s) ON CONFLICT(user_id) DO UPDATE SET ts=EXCLUDED.ts",
             (user_id, ts)
         )
+
+
+def save_user(user) -> None:
+    """Сохраняет пользователя в таблицу all_users (для рассылки)."""
+    with DBConn() as con:
+        con.cursor().execute(
+            """INSERT INTO all_users(user_id, username, first_name)
+               VALUES(%s,%s,%s)
+               ON CONFLICT(user_id) DO UPDATE SET username=EXCLUDED.username, first_name=EXCLUDED.first_name""",
+            (user.id, user.username, user.first_name)
+        )
+
+
+def get_all_user_ids() -> list[int]:
+    """Возвращает список всех user_id кто запускал бота."""
+    with DBConn() as con:
+        cur = con.cursor()
+        cur.execute("SELECT user_id FROM all_users")
+        rows = cur.fetchall()
+    return [r[0] for r in rows]
 
 
 # ============================================================
@@ -295,6 +324,7 @@ waiting_support  = {}
 owner_reply_to   = {}
 pending_purchase = {}
 owner_gen_state  = {}
+owner_broadcast  = {}   # НОВОЕ: состояние рассылки
 
 
 # ============================================================
@@ -349,6 +379,8 @@ bot = telebot.TeleBot(TOKEN, parse_mode=None)
 
 @bot.message_handler(commands=["start"])
 def start(message):
+    # Сохраняем пользователя для рассылки
+    save_user(message.from_user)
     bot.send_message(
         message.chat.id,
         f"👋 Привет, *{message.from_user.first_name}*!\n\n"
@@ -436,113 +468,108 @@ def support_start(message):
         "💬 *Связь с владельцем*\n\nНапиши сообщение, владелец ответит.\n\nОтмена: /cancel",
         parse_mode="Markdown")
 
-@bot.message_handler(commands=["cancel"])
-def cancel_cmd(message):
-    uid = message.from_user.id
-    waiting_support.pop(uid, None)
-    pending_purchase.pop(uid, None)
-    if uid == OWNER_ID:
-        owner_gen_state.pop(OWNER_ID, None)
-        owner_reply_to.pop(OWNER_ID, None)
-    bot.send_message(message.chat.id, "❌ Отменено.", reply_markup=main_kb(uid))
+# ============================================================
+#   ПАНЕЛЬ ВЛАДЕЛЬЦА — рассылка
+# ============================================================
+@bot.message_handler(func=lambda m: m.text == "👑 Панель владельца" and m.from_user.id == OWNER_ID)
+def owner_panel(message):
+    kb = telebot.types.InlineKeyboardMarkup()
+    kb.row(
+        telebot.types.InlineKeyboardButton("📢 Рассылка всем", callback_data="broadcast_start"),
+        telebot.types.InlineKeyboardButton("📊 Статистика",    callback_data="owner_stats"),
+    )
+    kb.row(
+        telebot.types.InlineKeyboardButton("🔑 Создать ключ",  callback_data="owner_genkey"),
+        telebot.types.InlineKeyboardButton("🗑 Удалить ключ",  callback_data="owner_delkey"),
+    )
+    bot.send_message(
+        message.chat.id,
+        "👑 *Панель разработчика*\n\nВыбери действие:",
+        parse_mode="Markdown",
+        reply_markup=kb
+    )
 
-@bot.callback_query_handler(func=lambda c: c.data.startswith("reply_"))
-def reply_to_user(call):
+@bot.callback_query_handler(func=lambda c: c.data == "broadcast_start")
+def broadcast_start(call):
     if call.from_user.id != OWNER_ID:
         return
-    target_id = int(call.data.split("_")[1])
-    owner_reply_to[OWNER_ID] = target_id
-    bot.send_message(OWNER_ID, f"✏️ Напиши ответ пользователю `{target_id}`:", parse_mode="Markdown")
+    owner_broadcast[OWNER_ID] = {"step": "wait_text"}
+    bot.send_message(
+        OWNER_ID,
+        "📢 *Рассылка*\n\nНапиши текст сообщения которое хочешь отправить всем пользователям.\n\nОтмена: /cancel",
+        parse_mode="Markdown"
+    )
     bot.answer_callback_query(call.id)
 
-@bot.message_handler(func=lambda m: True)
-def handle_all(message):
-    user_id = message.from_user.id
-    text = message.text or ""
-
-    if user_id == OWNER_ID and OWNER_ID in owner_gen_state:
-        state = owner_gen_state[OWNER_ID]
-        step  = state["step"]
-
-        if step == "wait_price":
-            target_uid = state["user_id"]
-            seconds    = state["seconds"]
-            del owner_gen_state[OWNER_ID]
-            kb = telebot.types.InlineKeyboardMarkup()
-            kb.add(telebot.types.InlineKeyboardButton(
-                f"✅ Выдать ключ ({fmt_duration(seconds)})",
-                callback_data=f"givekey_{target_uid}_{seconds}"
-            ))
-            try:
-                bot.send_message(target_uid,
-                    f"💬 *Ответ от владельца*\n\n"
-                    f"Твой запрос на ключ *{fmt_duration(seconds)}* рассмотрен!\n\n"
-                    f"💰 Цена: *{text}*\n\nПосле оплаты напиши владельцу.",
-                    parse_mode="Markdown")
-                bot.send_message(OWNER_ID, "✅ Цена отправлена! После оплаты нажми кнопку:", reply_markup=kb)
-            except Exception as e:
-                bot.send_message(OWNER_ID, f"❌ Ошибка: {e}")
-            return
-
-        if step == "wait_custom_date":
-            del owner_gen_state[OWNER_ID]
-            now = datetime.now()
-            try:
-                target = datetime.strptime(text.strip(), "%d.%m.%Y").replace(hour=23, minute=59, second=59)
-                if target <= now:
-                    bot.send_message(OWNER_ID, "❌ Дата уже прошла!")
-                    return
-                seconds = int((target - now).total_seconds())
-                key = generate_paid_key()
-                keys_set(key, time.time() + seconds, OWNER_ID, "paid")
-                bot.send_message(OWNER_ID,
-                    f"✅ *Ключ создан!*\n\n💎 Ключ: `{key}`\n📅 До: *{text.strip()}*\n⏱ {fmt_duration(seconds)}",
-                    parse_mode="Markdown")
-            except ValueError:
-                bot.send_message(OWNER_ID, "❌ Неверный формат! Используй ДД.ММ.ГГГГ")
-            return
-
-        if step == "wait_delete_key":
-            del owner_gen_state[OWNER_ID]
-            k = text.strip()
-            if keys_get(k):
-                keys_del(k)
-                bot.send_message(OWNER_ID, f"✅ Ключ `{k}` удалён.", parse_mode="Markdown")
-            else:
-                bot.send_message(OWNER_ID, "❌ Ключ не найден.", parse_mode="Markdown")
-            return
-
-    if user_id == OWNER_ID and OWNER_ID in owner_reply_to:
-        target_id = owner_reply_to.pop(OWNER_ID)
-        try:
-            bot.send_message(target_id, f"📨 *Ответ от владельца:*\n\n{text}", parse_mode="Markdown")
-            bot.send_message(OWNER_ID, "✅ Ответ отправлен!")
-        except Exception as e:
-            bot.send_message(OWNER_ID, f"❌ Ошибка: {e}")
+@bot.callback_query_handler(func=lambda c: c.data == "broadcast_confirm")
+def broadcast_confirm(call):
+    if call.from_user.id != OWNER_ID:
+        return
+    state = owner_broadcast.get(OWNER_ID, {})
+    text = state.get("text", "")
+    if not text:
+        bot.answer_callback_query(call.id, "Текст не найден!")
         return
 
-    if user_id in pending_purchase and pending_purchase[user_id].get("step") == "wait_date":
-        now = datetime.now()
-        try:
-            target = datetime.strptime(text.strip(), "%d.%m.%Y").replace(hour=23, minute=59, second=59)
-            if target <= now:
-                bot.send_message(message.chat.id, "❌ Дата уже прошла!")
-                return
-            seconds = int((target - now).total_seconds())
-            label = f"до {text.strip()}"
-            pending_purchase[user_id] = {"step": "confirm", "label": label, "seconds": seconds}
-            kb = telebot.types.InlineKeyboardMarkup()
-            kb.row(
-                telebot.types.InlineKeyboardButton("✅ Отправить запрос", callback_data="confirm_buy"),
-                telebot.types.InlineKeyboardButton("❌ Отмена",           callback_data="cancel_buy")
-            )
-            bot.send_message(message.chat.id,
-                f"📅 *Подтверждение*\n\nСегодня: *{now.strftime('%d.%m.%Y')}*\n"
-                f"До: *{text.strip()}*\nДлительность: *{fmt_duration(seconds)}*\n\n"
-                "Отправить запрос владельцу?",
-                parse_mode="Markdown", reply_markup=kb)
-        except ValueError:
-            bot.send_message(message.chat.id, "❌ Неверный формат! Используй *ДД.ММ.ГГГГ*", parse_mode="Markdown")
-        return
+    bot.answer_callback_query(call.id)
+    bot.send_message(OWNER_ID, "⏳ Начинаю рассылку...")
 
-    if user_id
+    user_ids = get_all_user_ids()
+    sent = 0
+    failed = 0
+
+    for uid in user_ids:
+        if uid == OWNER_ID:
+            continue
+        try:
+            bot.send_message(uid, text, parse_mode="Markdown")
+            sent += 1
+            time.sleep(0.05)  # небольшая пауза чтобы не словить флуд
+        except Exception:
+            failed += 1
+
+    owner_broadcast.pop(OWNER_ID, None)
+    bot.send_message(
+        OWNER_ID,
+        f"✅ *Рассылка завершена!*\n\n"
+        f"📨 Отправлено: *{sent}*\n"
+        f"❌ Не доставлено: *{failed}*\n"
+        f"👥 Всего пользователей: *{len(user_ids)}*",
+        parse_mode="Markdown"
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data == "broadcast_cancel")
+def broadcast_cancel_cb(call):
+    if call.from_user.id != OWNER_ID:
+        return
+    owner_broadcast.pop(OWNER_ID, None)
+    bot.send_message(OWNER_ID, "❌ Рассылка отменена.")
+    bot.answer_callback_query(call.id)
+
+@bot.callback_query_handler(func=lambda c: c.data == "owner_stats")
+def owner_stats(call):
+    if call.from_user.id != OWNER_ID:
+        return
+    user_ids = get_all_user_ids()
+    all_keys = keys_all()
+    active = sum(1 for k in all_keys.values() if k["expire"] > time.time())
+    bot.send_message(
+        OWNER_ID,
+        f"📊 *Статистика*\n\n"
+        f"👥 Пользователей: *{len(user_ids)}*\n"
+        f"🔑 Всего ключей: *{len(all_keys)}*\n"
+        f"✅ Активных ключей: *{active}*",
+        parse_mode="Markdown"
+    )
+    bot.answer_callback_query(call.id)
+
+@bot.callback_query_handler(func=lambda c: c.data == "owner_genkey")
+def owner_genkey_cb(call):
+    if call.from_user.id != OWNER_ID:
+        return
+    kb = telebot.types.InlineKeyboardMarkup()
+    kb.row(
+        telebot.types.InlineKeyboardButton("1 час",   callback_data="genkey_3600"),
+        telebot.types.InlineKeyboardButton("1 день",  callback_data="genkey_86400"),
+        telebot.types.InlineKeyboardButton("7 дней",  callback_data="genkey_604800"),
+  
